@@ -79,7 +79,7 @@ button:active:not(:disabled) { opacity: 0.7; }
   <label>金額（円）<span class="badge">OCR自動入力</span></label>
   <input type="text" id="f-amount" placeholder="例：1500" inputmode="numeric">
 
-  <label>支払い人<span class="req">必須</span></label>
+  <label>支払い人</label>
   <input type="text" id="f-payer" placeholder="例：田中">
 
   <label>購入品詳細<span class="badge">OCR自動入力</span></label>
@@ -162,12 +162,10 @@ btnOcr.addEventListener('click', function() {
 document.getElementById('f-payer').addEventListener('input', checkSubmit);
 
 function checkSubmit() {
-  btnSubmit.disabled = !(document.getElementById('f-payer').value.trim() && selectedFile);
-}
+  btnSubmit.disabled = !selectedFile;
 
 btnSubmit.addEventListener('click', function() {
   var payer = document.getElementById('f-payer').value.trim();
-  if (!payer)        { setMsg('支払い人を入力してください', 'err'); return; }
   if (!selectedFile) { setMsg('画像を選択してください', 'err'); return; }
   btnSubmit.disabled = true;
   setMsg('送信中（少々お待ちください）...', 'loading');
