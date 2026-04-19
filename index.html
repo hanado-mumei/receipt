@@ -26,16 +26,34 @@ textarea {
 }
 textarea { height: 5em; resize: none; line-height: 1.5; }
 input:focus, textarea:focus { outline: none; border-color: #3a7bd5; background: #fff; }
-.upload-area {
-  border: 3px dashed #bbb; border-radius: 16px; padding: 2.5em 1em;
-  text-align: center; cursor: pointer; color: #999; margin-bottom: 1em;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+.upload-wrap {
+  position: relative;
+  border: 3px dashed #bbb;
+  border-radius: 16px;
+  margin-bottom: 1em;
   min-height: 9em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #999;
+  overflow: hidden;
+  cursor: pointer;
 }
-.upload-area.has-file { border-color: #3a7bd5; }
+.upload-wrap.has-file { border-color: #3a7bd5; }
+.upload-inner { padding: 2em 1em; pointer-events: none; }
 .upload-icon { font-size: 3em; margin-bottom: 0.3em; }
 .upload-text { font-size: 1em; line-height: 1.7; }
-.upload-area img { max-width: 100%; max-height: 14em; border-radius: 10px; margin-top: 1em; }
+.upload-wrap img { max-width: 100%; max-height: 14em; border-radius: 10px; margin: 0.5em; pointer-events: none; }
+#file-input {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
 button {
   width: 100%; padding: 1em; border: none; border-radius: 12px;
   font-size: 1.2em; font-weight: bold; cursor: pointer; margin-bottom: 0.7em;
@@ -61,14 +79,14 @@ button:active:not(:disabled) { opacity: 0.7; }
 
 <div class="card">
   <label>領収証・レシート画像<span class="req">必須</span></label>
-  <div class="upload-area" id="drop-area" onclick="document.getElementById('file-input').click()">
-    <div id="drop-label">
+  <div class="upload-wrap" id="drop-area">
+    <div class="upload-inner" id="drop-inner">
       <div class="upload-icon">📷</div>
-      <div class="upload-text">タップして画像を選択<br><small>HEIC・JPG・PNG・PDF対応</small></div>
+      <div class="upload-text" id="upload-text">タップして画像を選択<br><small>HEIC・JPG・PNG対応</small></div>
     </div>
     <img id="preview" style="display:none">
+    <input type="file" id="file-input" accept="image/*">
   </div>
-  <input type="file" id="file-input" accept="*/*" style="display:none">
   <button id="btn-ocr" disabled>🔍 OCRで読み取る</button>
 </div>
 
@@ -102,14 +120,16 @@ var imageMime    = null;
 var dropArea  = document.getElementById('drop-area');
 var fileInput = document.getElementById('file-input');
 var preview   = document.getElementById('preview');
-var dropLabel = document.getElementById('drop-label');
+var dropInner = document.getElementById('drop-inner');
 var btnOcr    = document.getElementById('btn-ocr');
 var btnSubmit = document.getElementById('btn-submit');
 var msgEl     = document.getElementById('msg');
 
-fileInput.addEventListener('change', function(e) { handleFile(e.target.files[0]); });
-dropArea.addEventListener('dragover', function(e) { e.preventDefault(); });
-dropArea.addEventListener('drop', function(e) { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', function(e) {
+  if (e.target.files && e.target.files[0]) {
+    handleFile(e.target.files[0]);
+  }
+});
 
 function handleFile(file) {
   if (!file) return;
@@ -118,13 +138,9 @@ function handleFile(file) {
   var reader = new FileReader();
   reader.onload = function(e) {
     imageBase64 = e.target.result.split(',')[1];
-    if (!file.type.includes('pdf')) {
-      preview.src = e.target.result;
-      preview.style.display = 'block';
-      dropLabel.style.display = 'none';
-    } else {
-      dropLabel.querySelector('.upload-text').textContent = file.name;
-    }
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    dropInner.style.display = 'none';
     dropArea.classList.add('has-file');
     btnOcr.disabled = false;
     setMsg('', '');
@@ -159,13 +175,11 @@ btnOcr.addEventListener('click', function() {
   });
 });
 
-document.getElementById('f-payer').addEventListener('input', checkSubmit);
-
 function checkSubmit() {
   btnSubmit.disabled = !selectedFile;
+}
 
 btnSubmit.addEventListener('click', function() {
-  var payer = document.getElementById('f-payer').value.trim();
   if (!selectedFile) { setMsg('画像を選択してください', 'err'); return; }
   btnSubmit.disabled = true;
   setMsg('送信中（少々お待ちください）...', 'loading');
@@ -176,7 +190,7 @@ btnSubmit.addEventListener('click', function() {
       action:      'submit',
       date:        document.getElementById('f-date').value,
       amount:      document.getElementById('f-amount').value,
-      payer:       payer,
+      payer:       document.getElementById('f-payer').value,
       items:       document.getElementById('f-items').value,
       memo:        document.getElementById('f-memo').value,
       imageBase64: imageBase64,
@@ -204,8 +218,7 @@ function resetForm() {
   selectedFile = null; imageBase64 = null; imageMime = null;
   fileInput.value = '';
   preview.style.display = 'none';
-  dropLabel.style.display = 'block';
-  dropLabel.querySelector('.upload-text').innerHTML = 'タップして画像を選択<br><small>HEIC・JPG・PNG・PDF対応</small>';
+  dropInner.style.display = 'block';
   dropArea.classList.remove('has-file');
   ['f-date','f-amount','f-payer','f-items','f-memo'].forEach(function(id) {
     document.getElementById(id).value = '';
